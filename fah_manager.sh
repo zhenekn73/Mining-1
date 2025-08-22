@@ -14,67 +14,8 @@ check_installation() {
     fi
 }
 
-# Функция установки клиента
-install_client() {
-    echo "🔄 Установка Folding@Home Client"
-    echo "================================"
-
-    # Создаем папку atto если нет
-    mkdir -p /home/user/atto
-    cd /home/user/atto
-
-    echo "📦 Скачивание клиента..."
-    wget -q https://download.foldingathome.org/releases/public/fah-client/debian-10-64bit/release/fah-client_8.4.9-64bit-release.tar.bz2
-
-    if [ $? -ne 0 ]; then
-        echo "❌ Ошибка скачивания!"
-        exit 1
-    fi
-
-    echo "📂 Распаковка..."
-    tar -xjf fah-client_8.4.9-64bit-release.tar.bz2
-    mv fah-client_8.4.9-64bit-release/ fah-client/
-    cd fah-client/
-
-    # Делаем файл исполняемым
-    chmod +x fah-client
-
-    echo "🔑 Запрос данных для настройки..."
-    echo "================================"
-
-    # Запрос user (Atto address)
-    read -p "Введите ваш Atto адрес (без atto://): " USER_NAME
-
-    # Запрос passkey
-    read -p "Введите ваш Passkey (32 символа): " PASSKEY
-
-    # Запрос account token
-    read -p "Введите ваш Account Token: " ACCOUNT_TOKEN
-
-    # Запрос имени воркера (опционально)
-    read -p "Введите имя воркера (опционально, Enter чтобы пропустить): " MACHINE_NAME
-
-    echo "📝 Создание конфигурации..."
-    # Создаем конфиг файл
-    CONFIG_FILE="/home/user/atto/fah-client/config.xml"
-    cat > $CONFIG_FILE << EOL
-<config>
-  <user value="$USER_NAME"/>
-  <team value="1066107"/>
-  <passkey value="$PASSKEY"/>
-  <account-token value="$ACCOUNT_TOKEN"/>
-  <cpus value="0"/>
-  <on-idle value="false"/>
-EOL
-
-    # Добавляем имя машины если указано
-    if [ ! -z "$MACHINE_NAME" ]; then
-        echo "  <machine-name value=\"$MACHINE_NAME\"/>" >> $CONFIG_FILE
-    fi
-
-    echo "</config>" >> $CONFIG_FILE
-
-    # Создаем скрипты управления
+# Функция создания скриптов управления
+create_scripts() {
     echo "🚀 Создание скриптов управления..."
 
     # Создаем скрипт запуска в screen
@@ -165,11 +106,100 @@ else
 fi
 EOL
 
+    # Создаем скрипт удаления
+    cat > /home/user/atto/uninstall.sh << 'EOL'
+#!/bin/bash
+echo "🗑️  Удаление Folding@Home Client..."
+echo "=================================="
+
+# Останавливаем клиент
+pkill fah-client 2>/dev/null
+screen -S atto -X quit 2>/dev/null
+
+# Удаляем файлы и папки
+rm -rf /home/user/atto/fah-client/
+rm -f /home/user/atto/fah-client_8.4.9-64bit-release.tar.bz2
+rm -f /home/user/atto/start.sh
+rm -f /home/user/atto/stop.sh
+rm -f /home/user/atto/status.sh
+rm -f /home/user/atto/logs.sh
+rm -f /home/user/atto/uninstall.sh
+rm -f /tmp/fah.pid
+
+echo "✅ Folding@Home полностью удален!"
+echo "📁 Осталась только папка: /home/user/atto/"
+EOL
+
     # Делаем скрипты исполняемыми
     chmod +x /home/user/atto/start.sh
     chmod +x /home/user/atto/stop.sh
     chmod +x /home/user/atto/status.sh
     chmod +x /home/user/atto/logs.sh
+    chmod +x /home/user/atto/uninstall.sh
+}
+
+# Функция установки клиента
+install_client() {
+    echo "🔄 Установка Folding@Home Client"
+    echo "================================"
+
+    # Создаем папку atto если нет
+    mkdir -p /home/user/atto
+    cd /home/user/atto
+
+    echo "📦 Скачивание клиента..."
+    wget -q https://download.foldingathome.org/releases/public/fah-client/debian-10-64bit/release/fah-client_8.4.9-64bit-release.tar.bz2
+
+    if [ $? -ne 0 ]; then
+        echo "❌ Ошибка скачивания!"
+        exit 1
+    fi
+
+    echo "📂 Распаковка..."
+    tar -xjf fah-client_8.4.9-64bit-release.tar.bz2
+    mv fah-client_8.4.9-64bit-release/ fah-client/
+    cd fah-client/
+
+    # Делаем файл исполняемым
+    chmod +x fah-client
+
+    echo "🔑 Запрос данных для настройки..."
+    echo "================================"
+
+    # Запрос user (Atto address)
+    read -p "Введите ваш Atto адрес (без atto://): " USER_NAME
+
+    # Запрос passkey
+    read -p "Введите ваш Passkey (32 символа): " PASSKEY
+
+    # Запрос account token
+    read -p "Введите ваш Account Token: " ACCOUNT_TOKEN
+
+    # Запрос имени воркера (опционально)
+    read -p "Введите имя воркера (опционально, Enter чтобы пропустить): " MACHINE_NAME
+
+    echo "📝 Создание конфигурации..."
+    # Создаем конфиг файл
+    CONFIG_FILE="/home/user/atto/fah-client/config.xml"
+    cat > $CONFIG_FILE << EOL
+<config>
+  <user value="$USER_NAME"/>
+  <team value="1066107"/>
+  <passkey value="$PASSKEY"/>
+  <account-token value="$ACCOUNT_TOKEN"/>
+  <cpus value="0"/>
+  <on-idle value="false"/>
+EOL
+
+    # Добавляем имя машины если указано
+    if [ ! -z "$MACHINE_NAME" ]; then
+        echo "  <machine-name value=\"$MACHINE_NAME\"/>" >> $CONFIG_FILE
+    fi
+
+    echo "</config>" >> $CONFIG_FILE
+
+    # Создаем скрипты управления
+    create_scripts
 
     echo "🎉 Установка завершена!"
 }
@@ -181,32 +211,9 @@ start_client() {
     if [ -f "/home/user/atto/start.sh" ]; then
         /home/user/atto/start.sh
     else
-        echo "❌ Скрипт запуска не найден!"
-        echo "📁 Запуск вручную в screen..."
-        
-        # Проверяем установлен ли screen
-        if ! command -v screen &> /dev/null; then
-            echo "📦 Установка screen..."
-            sudo apt update && sudo apt install -y screen
-        fi
-        
-        # Останавливаем предыдущую сессию
-        screen -S atto -X quit 2>/dev/null
-        pkill fah-client 2>/dev/null
-        
-        # Запускаем в screen
-        cd /home/user/atto/fah-client/
-        screen -dmS atto ./fah-client --config=config.xml
-        
-        sleep 3
-        FAH_PID=$(pgrep fah-client)
-        if [ ! -z "$FAH_PID" ]; then
-            echo $FAH_PID > /tmp/fah.pid
-            echo "✅ Запущен в screen сессии 'atto'!"
-            echo "📺 PID: $FAH_PID"
-        else
-            echo "❌ Ошибка запуска!"
-        fi
+        echo "❌ Скрипт запуска не найден! Создаем..."
+        create_scripts
+        /home/user/atto/start.sh
     fi
 }
 
@@ -220,9 +227,10 @@ show_menu() {
     echo "4️⃣  Остановить клиент"
     echo "5️⃣  Просмотреть логи (screen)"
     echo "6️⃣  Подключиться к screen сессии"
-    echo "7️⃣  Выход"
+    echo "7️⃣  Удалить клиент"
+    echo "8️⃣  Выход"
     echo ""
-    read -p "Ваш выбор (1-7): " choice
+    read -p "Ваш выбор (1-8): " choice
 
     case $choice in
         1)
@@ -282,6 +290,25 @@ show_menu() {
             fi
             ;;
         7)
+            if check_installation; then
+                echo "🗑️  Удаление клиента..."
+                if [ -f "/home/user/atto/uninstall.sh" ]; then
+                    /home/user/atto/uninstall.sh
+                else
+                    echo "❌ Скрипт удаления не найден, удаляем вручную..."
+                    pkill fah-client 2>/dev/null
+                    screen -S atto -X quit 2>/dev/null
+                    rm -rf /home/user/atto/fah-client/
+                    rm -f /home/user/atto/fah-client_8.4.9-64bit-release.tar.bz2
+                    rm -f /home/user/atto/*.sh
+                    rm -f /tmp/fah.pid
+                    echo "✅ Клиент удален!"
+                fi
+            else
+                echo "❌ Клиент не установлен!"
+            fi
+            ;;
+        8)
             echo "👋 Выход..."
             exit 0
             ;;
